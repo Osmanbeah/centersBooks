@@ -6,7 +6,6 @@ import { AssistantLayout } from './components/layout/AssistantLayout';
 import { AdminFinancialDashboard } from './components/admin/AdminFinancialDashboard';
 import { AdminDeliveriesTracker } from './components/admin/AdminDeliveriesTracker';
 import { AssistantView } from './components/assistant/AssistantView';
-import { SettingsPage } from './pages/SettingsPage';
 
 export default function App() {
   return (
@@ -18,7 +17,6 @@ export default function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminFinancialDashboard />} />
               <Route path="deliveries" element={<AdminDeliveriesTracker />} />
-              <Route path="settings" element={<SettingsPage />} />
             </Route>
 
             {/* Direct Assistant Link */}

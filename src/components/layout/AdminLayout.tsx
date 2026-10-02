@@ -5,7 +5,6 @@ import {
   ShieldCheck, 
   DollarSign, 
   Truck, 
-  SlidersHorizontal,
   ExternalLink
 } from 'lucide-react';
 import { useCenters } from '../../context/CenterContext';
@@ -58,7 +57,7 @@ export const AdminLayout: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Settlements, Pricing Cuts, Margin Audits & Cloud Database
+                  Settlements, Pricing Cuts, Margin Audits & Deliveries
                 </p>
               </div>
             </div>
@@ -69,7 +68,7 @@ export const AdminLayout: React.FC = () => {
                 to="/admin"
                 end
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  `flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-white text-teal-950 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
@@ -88,7 +87,7 @@ export const AdminLayout: React.FC = () => {
               <NavLink
                 to="/admin/deliveries"
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  `flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-white text-indigo-950 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
@@ -97,20 +96,6 @@ export const AdminLayout: React.FC = () => {
               >
                 <Truck className="w-4 h-4 text-indigo-600" />
                 <span>Deliveries & Activity</span>
-              </NavLink>
-
-              <NavLink
-                to="/admin/settings"
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    isActive
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`
-                }
-              >
-                <SlidersHorizontal className="w-4 h-4 text-slate-600" />
-                <span>Supabase Database</span>
               </NavLink>
             </nav>
 
