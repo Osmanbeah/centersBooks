@@ -1,16 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-const getStoredSupabaseConfig = () => {
+const DEFAULT_SUPABASE_URL = 'https://xlhjygekwqsgfvlcptcm.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsaGp5Z2Vrd3FzZ2Z2bGNwdGNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NTE0OTUsImV4cCI6MjEwNjUyNzQ5NX0.QRO3jt-sRThDDLhIcl1alThPAJoqcKxWmKANPQ2CWOw';
+
+export const getStoredSupabaseConfig = () => {
   const customUrl = localStorage.getItem('custom_supabase_url');
   const customKey = localStorage.getItem('custom_supabase_key');
   
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  const url = customUrl || envUrl || 'https://placeholder-project.supabase.co';
-  const key = customKey || envKey || 'placeholder-anon-key';
+  const url = customUrl || envUrl || DEFAULT_SUPABASE_URL;
+  const key = customKey || envKey || DEFAULT_SUPABASE_ANON_KEY;
 
-  const isConfigured = Boolean((customUrl && customKey) || (envUrl && envKey));
+  const isConfigured = Boolean(
+    (customUrl && customKey) || 
+    (envUrl && envKey) || 
+    (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY)
+  );
 
   return { url, key, isConfigured };
 };
