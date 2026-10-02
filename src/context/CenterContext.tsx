@@ -9,6 +9,7 @@ import type {
   CollectionCategory
 } from '../types';
 import { INITIAL_CENTERS, INITIAL_DISTRIBUTIONS, INITIAL_COLLECTIONS } from '../lib/mockData';
+import { supabase, isSupabaseLiveConfigured } from '../lib/supabase';
 import { useToast } from './ToastContext';
 
 interface CenterContextType {
@@ -82,6 +83,27 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     localStorage.setItem('app_collections', JSON.stringify(collections));
   }, [collections]);
+
+  // Load from Supabase on mount if configured
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      if (!isSupabaseLiveConfigured()) return;
+      try {
+        const [cRes, dRes, colRes] = await Promise.all([
+          supabase.from('educational_centers').select('*').order('created_at', { ascending: false }),
+          supabase.from('inventory_distributions').select('*').order('created_at', { ascending: false }),
+          supabase.from('payment_collections').select('*').order('created_at', { ascending: false }),
+        ]);
+
+        if (cRes.data && cRes.data.length > 0) setCenters(cRes.data as EducationalCenter[]);
+        if (dRes.data && dRes.data.length > 0) setDistributions(dRes.data as InventoryDistribution[]);
+        if (colRes.data && colRes.data.length > 0) setCollections(colRes.data as PaymentCollection[]);
+      } catch (err) {
+        console.error('Supabase fetch failed, fallback to local cache:', err);
+      }
+    };
+    loadFromSupabase();
+  }, []);
 
   // Compute separated financial breakdown per center
   const financialSummaries: CenterFinancialSummary[] = useMemo(() => {
@@ -253,10 +275,12 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     codesCount: number,
     notes?: string,
     date?: string,
-    assistantName = 'Assistant'
+    assistantName = 'Assistant Mohamed'
   ) => {
     const center = centers.find(c => c.id === centerId);
     if (!center) return;
+
+    const distributionDate = date || new Date().toISOString().split('T')[0];
 
     const newDist: InventoryDistribution = {
       id: 'dist-' + Math.floor(1000 + Math.random() * 9000),
@@ -267,12 +291,26 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       books_count: Number(booksCount),
       codes_count: Number(codesCount),
       notes: notes?.trim(),
-      distribution_date: date || new Date().toISOString().split('T')[0],
+      distribution_date: distributionDate,
       created_at: new Date().toISOString(),
     };
 
     setDistributions(prev => [newDist, ...prev]);
     showToast(`Successfully logged delivery: ${booksCount} Books & ${codesCount} Codes for ${center.name}`, 'success');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('inventory_distributions').insert([{
+        center_id: centerId,
+        center_name: center.name,
+        assistant_name: assistantName,
+        books_count: Number(booksCount),
+        codes_count: Number(codesCount),
+        notes: notes?.trim() || null,
+        distribution_date: distributionDate,
+      }]).then(({ error }) => {
+        if (error) console.error('Supabase distribution sync error:', error);
+      });
+    }
   };
 
   const addCollection = (
@@ -281,7 +319,7 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     receiptProofUrl: string | null,
     notes?: string,
     date?: string,
-    assistantName = 'Assistant',
+    assistantName = 'Assistant Mohamed',
     amount?: number,
     category: CollectionCategory = 'both',
     booksPortion?: number,
@@ -307,6 +345,9 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       finalCodesPortion = calculatedAmount / 2;
     }
 
+    const collectionDate = date || new Date().toISOString().split('T')[0];
+    const initialStatus = paymentMethod === 'cash' ? 'verified' : 'pending_verification';
+
     const newCol: PaymentCollection = {
       id: 'col-' + Math.floor(1000 + Math.random() * 9000),
       center_id: centerId,
@@ -320,13 +361,32 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       payment_method: paymentMethod,
       receipt_proof_url: receiptProofUrl,
       notes: notes?.trim(),
-      collection_date: date || new Date().toISOString().split('T')[0],
-      status: paymentMethod === 'cash' ? 'verified' : 'pending_verification',
+      collection_date: collectionDate,
+      status: initialStatus,
       created_at: new Date().toISOString(),
     };
 
     setCollections(prev => [newCol, ...prev]);
     showToast(`Payment collection logged for ${center.name} (${category.toUpperCase()} revenue)`, 'success');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('payment_collections').insert([{
+        center_id: centerId,
+        center_name: center.name,
+        assistant_name: assistantName,
+        amount_collected: calculatedAmount,
+        category: category,
+        books_portion: finalBooksPortion,
+        codes_portion: finalCodesPortion,
+        payment_method: paymentMethod,
+        receipt_proof_url: receiptProofUrl,
+        notes: notes?.trim() || null,
+        collection_date: collectionDate,
+        status: initialStatus,
+      }]).then(({ error }) => {
+        if (error) console.error('Supabase collection sync error:', error);
+      });
+    }
   };
 
   const addCenter = (newCenterData: Omit<EducationalCenter, 'id' | 'created_at'>) => {
@@ -337,6 +397,12 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
     setCenters(prev => [...prev, newCenter]);
     showToast(`New center "${newCenter.name}" added successfully.`, 'success');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('educational_centers').insert([newCenterData]).then(({ error }) => {
+        if (error) console.error('Supabase add center error:', error);
+      });
+    }
   };
 
   const updateCenterPricing = (
@@ -361,6 +427,17 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       })
     );
     showToast('Center pricing and commission rates updated.', 'success');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('educational_centers').update({
+        book_price: Number(bookPrice),
+        book_center_cut: Number(bookCenterCut),
+        code_price: Number(codePrice),
+        code_center_cut: Number(codeCenterCut),
+      }).eq('id', centerId).then(({ error }) => {
+        if (error) console.error('Supabase update pricing error:', error);
+      });
+    }
   };
 
   const verifyCollection = (collectionId: string, status: 'verified' | 'rejected') => {
@@ -368,16 +445,34 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       prev.map(c => (c.id === collectionId ? { ...c, status } : c))
     );
     showToast(`Collection marked as ${status.replace('_', ' ')}.`, status === 'verified' ? 'success' : 'info');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('payment_collections').update({ status }).eq('id', collectionId).then(({ error }) => {
+        if (error) console.error('Supabase verify collection error:', error);
+      });
+    }
   };
 
   const deleteDistribution = (id: string) => {
     setDistributions(prev => prev.filter(d => d.id !== id));
     showToast('Distribution record removed.', 'info');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('inventory_distributions').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Supabase delete distribution error:', error);
+      });
+    }
   };
 
   const deleteCollection = (id: string) => {
     setCollections(prev => prev.filter(c => c.id !== id));
     showToast('Collection record removed.', 'info');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('payment_collections').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Supabase delete collection error:', error);
+      });
+    }
   };
 
   const deleteCenter = (id: string) => {
@@ -385,6 +480,12 @@ export const CenterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setDistributions(prev => prev.filter(d => d.center_id !== id));
     setCollections(prev => prev.filter(c => c.center_id !== id));
     showToast('Center and associated history deleted.', 'info');
+
+    if (isSupabaseLiveConfigured()) {
+      supabase.from('educational_centers').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Supabase delete center error:', error);
+      });
+    }
   };
 
   return (
