@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { CenterProvider } from './context/CenterContext';
-import { PortalGateway } from './pages/PortalGateway';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { AssistantLayout } from './components/layout/AssistantLayout';
 import { AdminFinancialDashboard } from './components/admin/AdminFinancialDashboard';
@@ -15,23 +14,23 @@ export default function App() {
       <CenterProvider>
         <BrowserRouter>
           <Routes>
-            {/* Gateway Page: Choose Admin or Assistant */}
-            <Route path="/" element={<PortalGateway />} />
-
-            {/* Admin Portal (Decoupled with full financial intelligence) */}
+            {/* Direct Admin Link */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminFinancialDashboard />} />
               <Route path="deliveries" element={<AdminDeliveriesTracker />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
 
-            {/* Field Assistant Portal (Quantity drops, collections with photo proofs, no prices) */}
+            {/* Direct Assistant Link */}
             <Route path="/assistant" element={<AssistantLayout />}>
               <Route index element={<AssistantView />} />
             </Route>
 
+            {/* Default root redirects to Admin */}
+            <Route path="/" element={<Navigate to="/admin" replace />} />
+
             {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </BrowserRouter>
       </CenterProvider>
